@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.7.0
+  sdk: '>=3.2.3 <4.0.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -32,6 +32,7 @@ dependencies:
     sdk: flutter
   http: ^0.13.5
   provider: ^6.1.5
+  intl: ^0.19.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -82,12 +83,16 @@ flutter:
   - assets/images/shopeepay_logo.png
   - assets/images/qris.jpg
   - assets/images/luffy.jpeg
-  - assets/images/nagi.jpeg
-  - assets/images/sukuna.jpeg
   - assets/images/karma.jpeg
+  - assets/images/sukuna.jpeg
   - assets/images/review.jpeg
   - assets/images/ytpanduan.jpg
-
+  - assets/images/tent_category.png
+  - assets/images/sleepingbag_category.png
+  - assets/images/light_category.png
+  - assets/images/cooking_category.png
+  - assets/images/backpack_category.png
+  - assets/images/climbing_category.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../ViewModel/product_view_model.dart';
 import '../Model/product_model.dart';
-import 'product_detail_screen.dart'; // Import the ProductDetailScreen
+import 'product_detail_screen.dart';
 
 class CategoryProductsScreen extends StatefulWidget {
   final int categoryId;
@@ -19,15 +19,62 @@ class CategoryProductsScreen extends StatefulWidget {
 }
 
 class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
+  late ProductViewModel _productViewModel;
+  bool _isInit = true;
+
   @override
-  void initState() {
-    super.initState();
-    // Fetch products when screen is initialized
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProductViewModel>().fetchProductsByCategory(
-        widget.categoryId,
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isInit) {
+      _productViewModel = Provider.of<ProductViewModel>(context, listen: false);
+      _productViewModel.fetchProductsByCategory(widget.categoryId);
+      _isInit = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  Future<void> _navigateToProductDetail(
+      BuildContext context, Product product) async {
+    final navigator = Navigator.of(context); // simpan sebelum async
+    final messenger = ScaffoldMessenger.of(context); // simpan sebelum async
+
+    try {
+      print('Tapped product: ${product.id} - ${product.name}');
+      await _productViewModel.fetchProductDetail(product.id);
+
+      if (!mounted) return;
+
+      if (_productViewModel.error.isNotEmpty) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(_productViewModel.error)),
+        );
+        return;
+      }
+
+      if (_productViewModel.selectedProduct != null) {
+        await navigator.push(
+          MaterialPageRoute(
+            builder: (context) => ProductDetailScreen(
+              product: _productViewModel.selectedProduct!,
+            ),
+          ),
+        );
+
+        if (mounted) {
+          _productViewModel.clearSelectedProduct();
+        }
+      }
+    } catch (e) {
+      print('Error navigating to product detail: $e');
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Failed to load product details')),
       );
-    });
+    }
   }
 
   @override
@@ -53,10 +100,8 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                     style: const TextStyle(color: Colors.red),
                   ),
                   ElevatedButton(
-                    onPressed:
-                        () => viewModel.fetchProductsByCategory(
-                          widget.categoryId,
-                        ),
+                    onPressed: () =>
+                        viewModel.fetchProductsByCategory(widget.categoryId),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -81,7 +126,7 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
             itemCount: viewModel.products.length,
             itemBuilder: (context, index) {
               final product = viewModel.products[index];
-              return _buildProductCard(product);
+              return _buildProductCard(context, product);
             },
           );
         },
@@ -89,16 +134,9 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
     );
   }
 
-  Widget _buildProductCard(Product product) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProductDetailScreen(product: product),
-          ),
-        );
-      },
+  Widget _buildProductCard(BuildContext context, Product product) {
+    return InkWell(
+      onTap: () => _navigateToProductDetail(context, product),
       child: Card(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -115,8 +153,9 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                 width: double.infinity,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
+                  print('Error loading image: ${product.imageUrl}');
                   return Image.asset(
-                    'assets/images/tent_category.png',
+                    'assets/images/products/default.png',
                     height: 120,
                     width: double.infinity,
                     fit: BoxFit.cover,
@@ -137,57 +176,20 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                   Text(
                     product.name,
                     style: const TextStyle(
-                      fontWeight: FontWeight.bold,
                       fontSize: 14,
+                      fontWeight: FontWeight.bold,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.star, size: 16, color: Colors.amber),
-                      Text(
-                        ' ${product.conditionRating?.toStringAsFixed(1) ?? "5.0"}',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      if (product.stockQuantity != null) ...[
-                        const Spacer(),
-                        Text(
-                          'Stock: ${product.stockQuantity}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color:
-                                product.stockQuantity! > 0
-                                    ? Colors.green
-                                    : Colors.red,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        'Rp ${product.pricePerDay.toStringAsFixed(0)}/hari',
-                        style: const TextStyle(
-                          color: Color(0xFF3C7846),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      if (product.depositAmount != null &&
-                          product.depositAmount! > 0) ...[
-                        const Spacer(),
-                        Text(
-                          'Deposit: ${product.depositAmount!.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ],
+                  Text(
+                    'Rp ${product.pricePerDay.toStringAsFixed(0)}/hari',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF3C7846),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),

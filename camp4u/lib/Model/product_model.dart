@@ -12,6 +12,7 @@ class Product {
   final double? weight;
   final String? dimensions;
   final String? rentalTerms;
+  final List<String>? images;
   final String imageUrl;
 
   Product({
@@ -20,14 +21,15 @@ class Product {
     required this.name,
     this.description,
     this.brand,
-    this.conditionRating = 5.0,
+    this.conditionRating,
     required this.pricePerDay,
-    this.depositAmount = 0.0,
-    this.stockQuantity = 1,
+    this.depositAmount,
+    this.stockQuantity,
     this.specifications,
     this.weight,
     this.dimensions,
     this.rentalTerms,
+    this.images,
     required this.imageUrl,
   });
 
@@ -38,23 +40,22 @@ class Product {
       name: json['name'] as String,
       description: json['description'] as String?,
       brand: json['brand'] as String?,
-      conditionRating:
-          json['condition_rating'] != null
-              ? (json['condition_rating'] as num).toDouble()
-              : 5.0,
+      conditionRating: json['condition_rating'] != null
+          ? (json['condition_rating'] as num).toDouble()
+          : null,
       pricePerDay: (json['price_per_day'] as num).toDouble(),
-      depositAmount:
-          json['deposit_amount'] != null
-              ? (json['deposit_amount'] as num).toDouble()
-              : 0.0,
-      stockQuantity: json['stock_quantity'] as int? ?? 1,
+      depositAmount: json['deposit_amount'] != null
+          ? (json['deposit_amount'] as num).toDouble()
+          : null,
+      stockQuantity: json['stock_quantity'] as int?,
       specifications: json['specifications'] as String?,
       weight:
           json['weight'] != null ? (json['weight'] as num).toDouble() : null,
       dimensions: json['dimensions'] as String?,
       rentalTerms: json['rental_terms'] as String?,
+      images: (json['images'] as List<dynamic>?)?.cast<String>(),
       imageUrl:
-          "assets/images/products/" + (json['image_url'] as String? ?? 'default.png'),
+          json['imageUrl'] as String? ?? "assets/images/products/default.png",
     );
   }
 }

@@ -1,12 +1,16 @@
 import sqlite3
 from typing import List, Optional
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import mysql.connector
+from mysql.connector.cursor import MySQLCursor
+from decimal import Decimal
+from pydantic import BaseModel
 
 app = FastAPI()
 
+# Configure CORS
 origins = [
     "http://localhost",
     "http://localhost:8080",
@@ -25,15 +29,6 @@ app.add_middleware(
     expose_headers=["*"]
 )
 
-@app.middleware("http")
-async def add_cors_headers(request, call_next):
-    response = await call_next(request)
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-    return response
-
 def get_db_connection():
     conn = mysql.connector.connect(
         host="localhost",
@@ -51,8 +46,8 @@ def read_root():
 def home():
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)  # agar hasil berupa dict
-        cursor.execute("SELECT * FROM categories")  # <-- execute via cursor
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM categories")
         categories = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -60,8 +55,6 @@ def home():
     except Exception as e:
         print("ERROR:", str(e))
         return {"error": str(e)}
-
-
 
 @app.post("/product")
 def create_product(name: str, category_id: int, price_per_day: float):
@@ -211,42 +204,108 @@ def cek_koneksi():
     except Exception as e:
         return {"status": "Gagal terhubung ke database", "error": str(e)}
 
-@app.get("/products/{category_id}")
+@app.get("/category/{category_id}/products")
 def get_products_by_category(category_id: int):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+        
+        # Get basic product info for category listing
+        cursor.execute("""
+            SELECT 
+                p.id, p.category_id, p.name, p.brand,
+                p.condition_rating, p.price_per_day, p.deposit_amount,
+                p.stock_quantity
+            FROM products p
+            WHERE p.category_id = %s
+            ORDER BY p.name
+        """, (category_id,))
+        
+        products = cursor.fetchall()
+        
+        for product in products:
+            # Get only primary image for listing
+            cursor.execute("""
+                SELECT image_url 
+                FROM product_images 
+                WHERE product_id = %s AND is_primary = 1
+                LIMIT 1
+            """, (product['id'],))
+            
+            primary_image = cursor.fetchone()
+            if primary_image:
+                product['imageUrl'] = 'assets/images/products/' + primary_image['image_url']
+            else:
+                product['imageUrl'] = 'assets/images/products/default.png'
+            
+            # Convert decimal values
+            if 'price_per_day' in product:
+                product['price_per_day'] = float(product['price_per_day'])
+            if 'deposit_amount' in product:
+                product['deposit_amount'] = float(product['deposit_amount']) if product['deposit_amount'] else None
+            if 'condition_rating' in product:
+                product['condition_rating'] = float(product['condition_rating']) if product['condition_rating'] else None
+        
+        cursor.close()
+        conn.close()
+        return {"products": products}
+    except Exception as e:
+        print("ERROR:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/products/{product_id}")
+def get_product_detail(product_id: int):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get detailed product info
         cursor.execute("""
             SELECT 
                 p.id, p.category_id, p.name, p.description, p.brand,
                 p.condition_rating, p.price_per_day, p.deposit_amount,
                 p.stock_quantity, p.specifications, p.weight,
-                p.dimensions, p.rental_terms,
-                CONCAT('assets/images/products/', pi.image_url) as image_url
+                p.dimensions, p.rental_terms
             FROM products p
-            LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1
-            WHERE p.category_id = %s
-            ORDER BY p.name
-        """, (category_id,))
-        products = cursor.fetchall()
+            WHERE p.id = %s
+        """, (product_id,))
+        
+        product = cursor.fetchone()
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+            
+        # Get all product images
+        cursor.execute("""
+            SELECT image_url, is_primary
+            FROM product_images 
+            WHERE product_id = %s 
+            ORDER BY is_primary DESC
+        """, (product_id,))
+        
+        images = cursor.fetchall()
+        if images:
+            product['images'] = ['assets/images/products/' + img['image_url'] for img in images]
+            primary_image = next((img['image_url'] for img in images if img['is_primary'] == 1), images[0]['image_url'])
+            product['imageUrl'] = 'assets/images/products/' + primary_image
+        else:
+            product['images'] = ['assets/images/products/default.png']
+            product['imageUrl'] = 'assets/images/products/default.png'
+        
+        # Convert decimal values
+        if 'price_per_day' in product:
+            product['price_per_day'] = float(product['price_per_day'])
+        if 'deposit_amount' in product:
+            product['deposit_amount'] = float(product['deposit_amount']) if product['deposit_amount'] else None
+        if 'condition_rating' in product:
+            product['condition_rating'] = float(product['condition_rating']) if product['condition_rating'] else None
+        if 'weight' in product:
+            product['weight'] = float(product['weight']) if product['weight'] else None
+        
         cursor.close()
         conn.close()
-        
-        # Convert decimal values to float for JSON serialization
-        for product in products:
-            if 'price_per_day' in product:
-                product['price_per_day'] = float(product['price_per_day'])
-            if 'deposit_amount' in product:
-                product['deposit_amount'] = float(product['deposit_amount'])
-            if 'condition_rating' in product:
-                product['condition_rating'] = float(product['condition_rating'])
-            if 'weight' in product:
-                product['weight'] = float(product['weight']) if product['weight'] else None
-            # Set default image if none is provided
-            if not product['image_url']:
-                product['image_url'] = 'assets/images/products/default.png'
-        
-        return {"products": products}
+        return {"product": product}
+    except HTTPException as he:
+        raise he
     except Exception as e:
         print("ERROR:", str(e))
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
