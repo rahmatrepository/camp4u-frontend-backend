@@ -8,6 +8,7 @@ import 'cart.dart';
 import 'chat.dart';
 import 'package:provider/provider.dart';
 import '../ViewModel/category_view_model.dart';
+import 'category_products_screen.dart'; // Import the new screen
 
 class CampingHomePage extends StatefulWidget {
   const CampingHomePage({Key? key}) : super(key: key);
@@ -361,23 +362,40 @@ class _CampingHomeContentState extends State<CampingHomeContent> {
     required String label,
     required Color color,
   }) {
-    return Column(
-      children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
+      onTap: () {
+        final categories = context.read<CategoryViewModel>().categories;
+        final category = categories.firstWhere((cat) => cat.name == label);
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) => CategoryProductsScreen(
+                  categoryId: category.id,
+                  categoryName: label,
+                ),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(imageUrl, fit: BoxFit.cover),
+        );
+      },
+      child: Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(imageUrl, fit: BoxFit.cover),
+            ),
           ),
-        ),
-        SizedBox(height: 8),
-        Text(label, style: TextStyle(fontSize: 12)),
-      ],
+          SizedBox(height: 8),
+          Text(label, style: TextStyle(fontSize: 12)),
+        ],
+      ),
     );
   }
 

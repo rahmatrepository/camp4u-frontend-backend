@@ -210,3 +210,43 @@ def cek_koneksi():
         return {"status": "Berhasil terhubung ke database"}
     except Exception as e:
         return {"status": "Gagal terhubung ke database", "error": str(e)}
+
+@app.get("/products/{category_id}")
+def get_products_by_category(category_id: int):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT 
+                p.id, p.category_id, p.name, p.description, p.brand,
+                p.condition_rating, p.price_per_day, p.deposit_amount,
+                p.stock_quantity, p.specifications, p.weight,
+                p.dimensions, p.rental_terms,
+                CONCAT('assets/images/products/', pi.image_url) as image_url
+            FROM products p
+            LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1
+            WHERE p.category_id = %s
+            ORDER BY p.name
+        """, (category_id,))
+        products = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        # Convert decimal values to float for JSON serialization
+        for product in products:
+            if 'price_per_day' in product:
+                product['price_per_day'] = float(product['price_per_day'])
+            if 'deposit_amount' in product:
+                product['deposit_amount'] = float(product['deposit_amount'])
+            if 'condition_rating' in product:
+                product['condition_rating'] = float(product['condition_rating'])
+            if 'weight' in product:
+                product['weight'] = float(product['weight']) if product['weight'] else None
+            # Set default image if none is provided
+            if not product['image_url']:
+                product['image_url'] = 'assets/images/products/default.png'
+        
+        return {"products": products}
+    except Exception as e:
+        print("ERROR:", str(e))
+        return {"error": str(e)}

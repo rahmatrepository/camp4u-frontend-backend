@@ -19,11 +19,15 @@ import 'screens/cod.dart';
 import 'screens/chat.dart';
 import 'screens/notif.dart';
 import 'ViewModel/category_view_model.dart';
+import 'ViewModel/product_view_model.dart';
 
 void main() {
   runApp(
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => CategoryViewModel())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => CategoryViewModel()),
+        ChangeNotifierProvider(create: (_) => ProductViewModel()),
+      ],
       child: const MyApp(),
     ),
   );
@@ -38,7 +42,7 @@ class MyApp extends StatelessWidget {
       title: 'Camp4U',
       theme: ThemeData(primarySwatch: Colors.green, fontFamily: 'Roboto'),
       debugShowCheckedModeBanner: false,
-      home: const MenuScreen(),
+      home: const CampingHomePage(),
     );
   }
 }
@@ -81,11 +85,11 @@ class MenuScreen extends StatelessWidget {
                 label: 'Product',
                 destination: const CategoryScreen(),
               ),
-              _buildNavigationButton(
-                context: context,
-                label: 'Product Detail',
-                destination: const ProductDetailScreen(),
-              ),
+              // _buildNavigationButton(
+              //   context: context,
+              //   label: 'Product Detail',
+              //   destination: const ProductDetailScreen(),
+              // ),
               _buildNavigationButton(
                 context: context,
                 label: 'Ulasan',
