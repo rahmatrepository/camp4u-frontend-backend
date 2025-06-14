@@ -1,146 +1,186 @@
+import 'package:camp4u/ViewModel/auth_view_model.dart';
 import 'package:flutter/material.dart';
-import 'edit_profil.dart';  
-import 'riwayat_sewa.dart'; 
+import 'package:provider/provider.dart';
+import 'edit_profil.dart';
+import 'riwayat_sewa.dart';
 
 class ProfilScreen extends StatelessWidget {
   const ProfilScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Define button green color based on RGB value
-    final buttonGreen = Color.fromRGBO(122, 151, 72, 1);
+    final buttonGreen = const Color.fromRGBO(122, 151, 72, 1);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header with back button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  InkWell(
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Icon(Icons.arrow_back, color: Colors.black),
+    return Consumer<AuthViewModel>(
+      builder: (context, authViewModel, child) {
+        if (!authViewModel.isLoggedIn) {
+          return Scaffold(
+            backgroundColor: Colors.white,
+            body: SafeArea(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.person_outline,
+                        size: 80, color: Colors.grey),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Silakan login atau register untuk mengakses profil',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/login');
+                      },
+                      child: const Text('Login'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/register');
+                      },
+                      child: const Text('Register'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        final user = authViewModel.user!;
+
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      const Text(
+                        'Profil',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 40), // For balance
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  const Text(
-                    'Profil',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.black,
+                ),
+
+                // Profile picture
+                const Center(
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.grey,
+                    child: Icon(
+                      Icons.person_outline,
+                      size: 50,
+                      color: Colors.white,
                     ),
                   ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Profile picture
-            Center(
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFA0A0A0), // Grey color for the profile picture
                 ),
-                child: const Icon(
-                  Icons.person_outline,
-                  size: 60,
-                  color: Colors.white,
+
+                const SizedBox(height: 16),
+
+                // Username
+                Center(
+                  child: Text(
+                    user.username,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // User name
-            const Center(
-              child: Text(
-                'Andi Maulana',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+
+                // Email
+                if (user.email != null)
+                  Center(
+                    child: Text(
+                      user.email!,
+                      style:
+                          const TextStyle(fontSize: 14, color: Colors.black54),
+                    ),
+                  ),
+
+                const SizedBox(height: 32),
+
+                // Menu options
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      _buildMenuButton(
+                        context: context,
+                        title: 'Edit Profile',
+                        icon: Icons.arrow_circle_right_outlined,
+                        iconColor: Colors.black,
+                        backgroundColor: buttonGreen,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const EditProfilScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _buildMenuButton(
+                        context: context,
+                        title: 'Riwayat penyewaan',
+                        icon: Icons.arrow_circle_right_outlined,
+                        iconColor: Colors.black,
+                        backgroundColor: buttonGreen,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RiwayatSewa(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _buildMenuButton(
+                        context: context,
+                        title: 'Keluar',
+                        icon: Icons.logout,
+                        iconColor: Colors.red,
+                        backgroundColor: buttonGreen,
+                        onTap: () {
+                          authViewModel.logout();
+                          Navigator.pushNamedAndRemoveUntil(
+                            context,
+                            '/login',
+                            (route) => false,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
-            
-            const SizedBox(height: 32),
-            
-            // Menu options
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  // Edit Profile button
-                  _buildMenuButton(
-                    context: context,
-                    title: 'Edit Profile',
-                    icon: Icons.arrow_circle_right_outlined,
-                    iconColor: Colors.black,
-                    backgroundColor: buttonGreen,
-                    onTap: () {
-                      // Navigate to EditProfilScreen class
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EditProfilScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  
-                  const SizedBox(height: 12),
-                  
-                  // Rental history button
-                  _buildMenuButton(
-                    context: context,
-                    title: 'Riwayat penyewaan',
-                    icon: Icons.arrow_circle_right_outlined,
-                    iconColor: Colors.black,
-                    backgroundColor: buttonGreen,
-                    onTap: () {
-                      // Navigate to RiwayatSewa class
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const RiwayatSewa(),
-                        ),
-                      );
-                    },
-                  ),
-                  
-                  const SizedBox(height: 12),
-                  
-                  // Logout button
-                  _buildMenuButton(
-                    context: context,
-                    title: 'Keluar',
-                    icon: Icons.logout,
-                    iconColor: Colors.red,
-                    backgroundColor: buttonGreen,
-                    onTap: () {
-                      // Show confirmation dialog before logout
-                      _showLogoutConfirmationDialog(context);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
-  
+
   Widget _buildMenuButton({
     required BuildContext context,
     required String title,
@@ -177,35 +217,6 @@ class ProfilScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-  
-  // Show logout confirmation dialog
-  void _showLogoutConfirmationDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Konfirmasi'),
-          content: const Text('Apakah Anda yakin ingin keluar?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: const Text('Batal'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                // Navigate to MyApp class (main)
-                
-              },
-              child: const Text('Ya'),
-            ),
-          ],
-        );
-      },
     );
   }
 }

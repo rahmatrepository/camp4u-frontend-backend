@@ -1,3 +1,4 @@
+import 'package:camp4u/screens/edit_profil.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
@@ -20,6 +21,7 @@ import 'screens/chat.dart';
 import 'screens/notif.dart';
 import 'ViewModel/category_view_model.dart';
 import 'ViewModel/product_view_model.dart';
+import 'ViewModel/auth_view_model.dart';
 
 void main() {
   runApp(
@@ -27,6 +29,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => CategoryViewModel()),
         ChangeNotifierProvider(create: (_) => ProductViewModel()),
+        ChangeNotifierProvider(create: (_) => AuthViewModel()),
       ],
       child: const MyApp(),
     ),
@@ -42,7 +45,13 @@ class MyApp extends StatelessWidget {
       title: 'Camp4U',
       theme: ThemeData(primarySwatch: Colors.green, fontFamily: 'Roboto'),
       debugShowCheckedModeBanner: false,
-      home: const CampingHomePage(),
+      initialRoute: '/home',
+      routes: {
+        '/home': (context) => const CampingHomePage(),
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegistrationScreen(),
+        '/edit_profile': (context) => const EditProfilScreen(),
+      },
     );
   }
 }
