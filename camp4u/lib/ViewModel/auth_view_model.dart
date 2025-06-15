@@ -1,18 +1,22 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../Model/user_model.dart'; // Pastikan path ini benar
+import 'package:provider/provider.dart';
+import 'cart_view_model.dart';
+import '../Model/user_model.dart';
 
 class AuthViewModel extends ChangeNotifier {
   User? _user;
+  String? _token;
   bool _isLoading = false;
   String _error = '';
-  String? _token;
 
   User? get user => _user;
+  String? get token => _token;
   bool get isLoading => _isLoading;
   String get error => _error;
-  bool get isLoggedIn => _user != null;
+  bool get isLoggedIn => _token != null;
 
   String get _baseUrl {
     if (kIsWeb) {
@@ -22,142 +26,168 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
-  Future<bool> login(String username, String password) async {
+  Future<bool> login(
+      BuildContext context, String username, String password) async {
     try {
       _isLoading = true;
       _error = '';
       notifyListeners();
-      print('AuthViewModel: Attempting login for username: $username');
+
+      if (username.isEmpty || password.isEmpty) {
+        _error = 'Username dan password harus diisi';
+        return false;
+      }
 
       final response = await http.post(
         Uri.parse('$_baseUrl/auth/login'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
           'username': username,
           'password': password,
-        }),
+        },
       );
 
-      print('AuthViewModel: Login response status code: ${response.statusCode}');
-      print('AuthViewModel: Login response body: ${response.body}');
+      final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _token = data['token'];
-
-        // Pastikan pabrik User.fromJson memetakan respons dengan benar.
-        // Asumsi backend mengembalikan semua detail pengguna saat login.
+        _token = data['access_token'];
         _user = User(
           id: data['id'],
-          username: data['username'] ?? username,
-          fullName: data['full_name'] ?? username,
-          phoneNumber: data['phone_number'] ?? '',
+          username: data['username'],
           email: data['email'],
-          profilePicture: data['profile_picture'],
-          address: data['address'],
-          city: data['city'],
-          province: data['province'],
-          postalCode: data['postal_code'],
-          dateOfBirth: data['date_of_birth'] != null
-              ? DateTime.parse(data['date_of_birth'])
-              : null,
-          gender: data['gender'],
+          fullName: data['full_name'],
+          phoneNumber: data['phone_number'],
           createdAt: DateTime.parse(data['created_at']),
           updatedAt: DateTime.parse(data['updated_at']),
         );
-        _error = '';
-        print('AuthViewModel: Login successful for user: ${_user?.username}');
+
+        if (context.mounted) {
+          final cartViewModel =
+              Provider.of<CartViewModel>(context, listen: false);
+          cartViewModel.setAuthToken(_token!);
+        }
+
+        notifyListeners();
         return true;
       } else {
-        final data = jsonDecode(response.body);
-        _error = data['detail'] ?? 'Invalid username or password';
-        print('AuthViewModel: Login failed. Error: $_error');
+        _error = data['detail'] ?? 'Username atau password salah';
         return false;
       }
     } catch (e) {
-      _error = 'Network or parsing error: $e';
-      print('AuthViewModel: Exception during login: $_error');
+      _error = 'Terjadi kesalahan: ${e.toString()}';
       return false;
     } finally {
       _isLoading = false;
       notifyListeners();
-      print('AuthViewModel: Login process finished. isLoading: $_isLoading');
     }
   }
 
   Future<bool> register({
     required String username,
-    required String password,
     required String email,
-    required String fullName,
-    required String phoneNumber,
+    required String password,
+    String? fullName,
+    String? phoneNumber,
     String? profilePicture,
-    String? address,
-    String? city,
-    String? province,
-    String? postalCode,
-    DateTime? dateOfBirth,
-    String? gender,
   }) async {
     try {
       _isLoading = true;
       _error = '';
       notifyListeners();
-      print('AuthViewModel: Attempting registration for username: $username');
 
       final response = await http.post(
         Uri.parse('$_baseUrl/auth/register'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'username': username,
-          'password': password,
           'email': email,
+          'password': password,
           'full_name': fullName,
           'phone_number': phoneNumber,
           'profile_picture': profilePicture,
-          'address': address,
-          'city': city,
-          'province': province,
-          'postal_code': postalCode,
-          'date_of_birth': dateOfBirth?.toIso8601String(),
-          'gender': gender,
         }),
       );
 
-      print('AuthViewModel: Register response status code: ${response.statusCode}');
-      print('AuthViewModel: Register response body: ${response.body}');
-
       if (response.statusCode == 201) {
-        print('AuthViewModel: Registration successful. Attempting auto-login.');
-        return await login(username, password); // Coba login otomatis setelah register
+        notifyListeners();
+        return true;
       } else {
         final data = jsonDecode(response.body);
         _error = data['detail'] ?? 'Registration failed';
-        print('AuthViewModel: Registration failed. Error: $_error');
+        notifyListeners();
         return false;
       }
     } catch (e) {
-      _error = 'Network or parsing error during registration: $e';
-      print('AuthViewModel: Exception during registration: $_error');
+      _error = e.toString();
+      notifyListeners();
       return false;
     } finally {
       _isLoading = false;
       notifyListeners();
-      print('AuthViewModel: Registration process finished. isLoading: $_isLoading');
     }
   }
 
-  void logout() {
+  Future<bool> updateProfile({
+    required String fullName,
+    required String username,
+    required String phoneNumber,
+  }) async {
+    try {
+      _isLoading = true;
+      _error = '';
+      notifyListeners();
+
+      final response = await http.put(
+        Uri.parse('$_baseUrl/auth/profile/update'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: jsonEncode({
+          'full_name': fullName,
+          'username': username,
+          'phone_number': phoneNumber,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _user = User(
+          id: _user!.id,
+          username: username,
+          email: _user!.email,
+          fullName: fullName,
+          phoneNumber: phoneNumber,
+          createdAt: _user!.createdAt,
+          updatedAt: DateTime.parse(data['updated_at']),
+        );
+        notifyListeners();
+        return true;
+      } else {
+        final data = jsonDecode(response.body);
+        _error = data['detail'] ?? 'Failed to update profile';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void logout(BuildContext context) {
     _user = null;
     _token = null;
-    _error = '';
+
+    if (context.mounted) {
+      final cartViewModel = Provider.of<CartViewModel>(context, listen: false);
+      cartViewModel.setAuthToken('');
+    }
+
     notifyListeners();
-    print('AuthViewModel: User logged out.');
   }
 }

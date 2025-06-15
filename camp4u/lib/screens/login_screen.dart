@@ -25,18 +25,23 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       final success = await context.read<AuthViewModel>().login(
+            context,
             _usernameController.text,
             _passwordController.text,
           );
 
       if (mounted) {
         if (success) {
-          // Navigasi ke halaman profil setelah login berhasil
-          Navigator.pushReplacementNamed(context, '/profile');
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/home', // Navigate to home instead of profile
+            (route) => false, // Remove all previous routes
+          );
         } else {
+          final error = context.read<AuthViewModel>().error;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Login failed. Please check your credentials.'),
+            SnackBar(
+              content: Text(error),
               backgroundColor: Colors.red,
             ),
           );
@@ -91,7 +96,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your username';
+                            return 'Username tidak boleh kosong';
+                          }
+                          if (value.length < 3) {
+                            return 'Username minimal 3 karakter';
                           }
                           return null;
                         },
@@ -133,7 +141,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your password';
+                            return 'Password tidak boleh kosong';
+                          }
+                          if (value.length < 6) {
+                            return 'Password minimal 6 karakter';
                           }
                           return null;
                         },

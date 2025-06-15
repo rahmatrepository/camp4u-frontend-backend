@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../ViewModel/auth_view_model.dart';
 
 class EditProfilScreen extends StatefulWidget {
   const EditProfilScreen({Key? key}) : super(key: key);
@@ -9,9 +11,20 @@ class EditProfilScreen extends StatefulWidget {
 
 class _EditProfilScreenState extends State<EditProfilScreen> {
   // Text controllers for the form fields
-  final TextEditingController _nameController = TextEditingController(text: 'Andi maulana');
-  final TextEditingController _usernameController = TextEditingController(text: 'andi__');
-  final TextEditingController _phoneController = TextEditingController(text: '+62 82246048776');
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final user = context.read<AuthViewModel>().user;
+    if (user != null) {
+      _nameController.text = user.fullName ?? '';
+      _usernameController.text = user.username;
+      _phoneController.text = user.phoneNumber ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -24,8 +37,8 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
   @override
   Widget build(BuildContext context) {
     // Define colors based on RGB values
-    final buttonGreen = Color.fromRGBO(122, 151, 72, 1);
-    final lightYellow = Color.fromRGBO(255, 243, 163, 1);
+    final buttonGreen = const Color.fromRGBO(122, 151, 72, 1);
+    final lightYellow = const Color.fromRGBO(255, 243, 163, 1);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -57,7 +70,7 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                 ],
               ),
             ),
-            
+
             // Profile picture section
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
@@ -70,7 +83,8 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                       height: 100,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Color(0xFFA0A0A0), // Grey color for the profile picture
+                        color: Color(
+                            0xFFA0A0A0), // Grey color for the profile picture
                       ),
                       child: const Icon(
                         Icons.person_outline,
@@ -79,9 +93,9 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 8),
-                  
+
                   // Change photo text
                   const Text(
                     'Ganti Foto',
@@ -93,10 +107,10 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                 ],
               ),
             ),
-            
+
             // Form fields
             Expanded(
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,16 +129,17 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: lightYellow,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 12),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide.none,
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Username field
                     const Text(
                       'User Name',
@@ -139,16 +154,17 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: lightYellow,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 12),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide.none,
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Phone number field
                     const Text(
                       'No.Telpon',
@@ -164,41 +180,90 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: lightYellow,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 12),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide.none,
                         ),
                       ),
                     ),
-                    
-                    const Spacer(),
-                    
-                    // Save button
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          // Handle save profile
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: buttonGreen,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                        child: const Text(
-                          'Simpan',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+
+                    // Error message
+                    Consumer<AuthViewModel>(
+                      builder: (context, authViewModel, _) {
+                        if (authViewModel.error.isNotEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: Text(
+                              authViewModel.error,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
                     ),
-                    
-                    const SizedBox(height: 20),
+
+                    const SizedBox(height: 32),
+
+                    // Save button
+                    Consumer<AuthViewModel>(
+                      builder: (context, authViewModel, _) {
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: authViewModel.isLoading
+                                ? null
+                                : () async {
+                                    final success =
+                                        await authViewModel.updateProfile(
+                                      fullName: _nameController.text,
+                                      username: _usernameController.text,
+                                      phoneNumber: _phoneController.text,
+                                    );
+
+                                    if (success && mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Profile updated successfully'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                      Navigator.pop(context);
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: buttonGreen,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: authViewModel.isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                    ),
+                                  )
+                                : const Text(
+                                    'Simpan',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),

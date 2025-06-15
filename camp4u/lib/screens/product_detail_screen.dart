@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../Model/product_model.dart';
 import '../ViewModel/product_view_model.dart';
+import '../ViewModel/cart_view_model.dart';
+import '../ViewModel/auth_view_model.dart';
+import 'cart.dart';
+import 'login.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -16,6 +20,38 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  int _quantity = 1;
+  DateTime? _startDate;
+  DateTime? _endDate;
+
+  Future<void> _selectDateRange() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: _startDate != null && _endDate != null
+          ? DateTimeRange(start: _startDate!, end: _endDate!)
+          : null,
+      builder: (BuildContext context, Widget? child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            primaryColor: const Color(0xFF6B9B37),
+            colorScheme: const ColorScheme.light(primary: Color(0xFF6B9B37)),
+            buttonTheme:
+                const ButtonThemeData(textTheme: ButtonTextTheme.primary),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _startDate = picked.start;
+        _endDate = picked.end;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +67,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.shopping_cart, color: Colors.black),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CartScreen()),
+              );
+            },
           ),
         ],
       ),
@@ -89,8 +130,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             displayImages[index],
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) {
-                              print(
-                                  'Error loading image: ${displayImages[index]}');
                               return Image.asset(
                                 'assets/images/products/default.png',
                                 fit: BoxFit.contain,
@@ -100,7 +139,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         },
                       ),
                     ),
-                    // Page Indicator
                     if (displayImages.length > 1)
                       Positioned(
                         bottom: 16,
@@ -133,13 +171,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (displayProduct.brand != null)
-                        Text(
-                          displayProduct.brand!,
-                          style:
-                              TextStyle(color: Colors.grey[600], fontSize: 14),
-                        ),
-                      const SizedBox(height: 8),
                       Text(
                         displayProduct.name,
                         style: const TextStyle(
@@ -148,99 +179,95 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
+                      Text(
+                        'Rp ${displayProduct.pricePerDay.toStringAsFixed(0)}/hari',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          color: Color(0xFF6B9B37),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
 
-                      // Price and Rating
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Rp ${displayProduct.pricePerDay.toStringAsFixed(0)}/hari',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF3C7846),
-                            ),
-                          ),
-                          Row(
+                      // Date Selection
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: List.generate(
-                                  5,
-                                  (index) => Icon(
-                                    index <
-                                            (displayProduct.conditionRating ??
-                                                5)
-                                        ? Icons.star
-                                        : Icons.star_border,
-                                    color: Colors.amber,
-                                    size: 18,
-                                  ),
+                              const Text(
+                                'Pilih Tanggal Sewa',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '(${displayProduct.conditionRating?.toStringAsFixed(1) ?? "5.0"})',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
+                              const SizedBox(height: 8),
+                              InkWell(
+                                onTap: _selectDateRange,
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.grey),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        _startDate != null && _endDate != null
+                                            ? '${_startDate!.day}/${_startDate!.month} - ${_endDate!.day}/${_endDate!.month}'
+                                            : 'Pilih tanggal',
+                                        style: TextStyle(
+                                          color: _startDate != null
+                                              ? Colors.black
+                                              : Colors.grey,
+                                        ),
+                                      ),
+                                      const Icon(Icons.calendar_today),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-
-                      const Divider(height: 32),
-
-                      // Description
-                      const Text(
-                        'Deskripsi',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        displayProduct.description ?? 'Tidak ada deskripsi',
-                        style: const TextStyle(fontSize: 14),
+                        ),
                       ),
 
                       const SizedBox(height: 16),
 
-                      // Specifications
-                      if (displayProduct.specifications != null) ...[
-                        const Text(
-                          'Spesifikasi',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          displayProduct.specifications!,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ],
-
-                      const SizedBox(height: 16),
-
-                      // Additional Info
-                      if (displayProduct.weight != null ||
-                          displayProduct.dimensions != null)
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (displayProduct.weight != null)
-                                  Text('Berat: ${displayProduct.weight} kg'),
-                                if (displayProduct.dimensions != null)
-                                  Text('Dimensi: ${displayProduct.dimensions}'),
-                              ],
+                      // Quantity Selection
+                      Row(
+                        children: [
+                          const Text(
+                            'Jumlah',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
+                          const SizedBox(width: 16),
+                          IconButton(
+                            icon: const Icon(Icons.remove),
+                            onPressed: _quantity > 1
+                                ? () => setState(() => _quantity--)
+                                : null,
+                          ),
+                          Text(
+                            _quantity.toString(),
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.add),
+                            onPressed:
+                                _quantity < (displayProduct.stockQuantity ?? 10)
+                                    ? () => setState(() => _quantity++)
+                                    : null,
+                          ),
+                        ],
+                      ),
 
                       const SizedBox(height: 24),
 
@@ -248,33 +275,64 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.add_shopping_cart),
-                              label: const Text('Keranjang'),
-                              onPressed: () {
-                                // TODO: Implement add to cart
+                            child: Consumer2<CartViewModel, AuthViewModel>(
+                              builder:
+                                  (context, cartViewModel, authViewModel, _) {
+                                return ElevatedButton.icon(
+                                  icon: const Icon(Icons.add_shopping_cart),
+                                  label: const Text('Keranjang'),
+                                  onPressed: cartViewModel.isLoading
+                                      ? null
+                                      : () => _addToCart(
+                                            context,
+                                            displayProduct,
+                                            cartViewModel,
+                                            authViewModel,
+                                          ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF6B9B37),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                );
                               },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: ElevatedButton(
-                              onPressed: () {
-                                // TODO: Implement rent now
+                            child: Consumer<AuthViewModel>(
+                              builder: (context, authViewModel, _) {
+                                return ElevatedButton(
+                                  onPressed: () {
+                                    if (!authViewModel.isLoggedIn) {
+                                      _showLoginDialog(context);
+                                      return;
+                                    }
+                                    if (_startDate == null ||
+                                        _endDate == null) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Pilih tanggal sewa terlebih dahulu'),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    // TODO: Implement direct booking
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF3C7846),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                  child: const Text('Sewa Sekarang'),
+                                );
                               },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF3C7846),
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                              child: const Text('Sewa Sekarang'),
                             ),
                           ),
                         ],
@@ -288,6 +346,74 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         },
       ),
     );
+  }
+
+  void _showLoginDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Login Required'),
+        content: const Text('Silakan login terlebih dahulu untuk melanjutkan'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6B9B37),
+            ),
+            child: const Text('Login'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addToCart(
+    BuildContext context,
+    Product product,
+    CartViewModel cartViewModel,
+    AuthViewModel authViewModel,
+  ) async {
+    if (!authViewModel.isLoggedIn) {
+      _showLoginDialog(context);
+      return;
+    }
+
+    if (_startDate == null || _endDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih tanggal sewa terlebih dahulu')),
+      );
+      return;
+    }
+
+    final rentalDays = _endDate!.difference(_startDate!).inDays + 1;
+    final subtotal = product.pricePerDay * _quantity * rentalDays;
+
+    final success = await cartViewModel.addToCart(
+      userId: authViewModel.user!.id,
+      productId: product.id,
+      quantity: _quantity,
+      startDate: _startDate!,
+      endDate: _endDate!,
+      name: product.name,
+      price: product.pricePerDay,
+      image: product.imageUrl,
+    );
+
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Berhasil ditambahkan ke keranjang')),
+      );
+    }
   }
 
   @override

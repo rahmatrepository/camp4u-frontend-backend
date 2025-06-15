@@ -36,95 +36,102 @@ class _CampingHomePageState extends State<CampingHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Definisikan warna hijau khusus sesuai spesifikasi
-    Color customGreen = const Color(0xFF3C7846);
-
-    // If we're on a screen other than home, show that screen
-    if (_selectedIndex != 0) {
-      return _screens[_selectedIndex];
-    }
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: customGreen, // Menggunakan warna hijau #3c7846
-        title: Row(
-          children: [
-            Text(
-              'Camp4U',
-              style: TextStyle(
-                color: Colors.black87,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
+    return WillPopScope(
+      onWillPop: () async {
+        if (_selectedIndex != 0) {
+          setState(() {
+            _selectedIndex = 0;
+          });
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: _selectedIndex == 0 ? _buildHomeAppBar(context) : null,
+        body: _screens[_selectedIndex], // Show the current screen
+        bottomNavigationBar: BottomNavigationBar(
+          backgroundColor: const Color(0xFF3C7846),
+          selectedItemColor: Colors.white,
+          unselectedItemColor: Colors.black,
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.lightbulb_outline),
+              label: 'Panduan',
             ),
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 10),
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TextField(
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                    prefixIcon: Icon(Icons.search, color: Colors.grey),
-                    border: InputBorder.none,
-                    hintText: 'Cari gear...',
-                    hintStyle: TextStyle(color: Colors.grey.shade500),
-                  ),
-                ),
-              ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.notifications_none),
+              label: 'Notifikasi',
             ),
-            // Cart icon with navigation
-            InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const CartScreen()),
-                );
-              },
-              child: Icon(Icons.shopping_cart, color: Colors.black87),
-            ),
-            SizedBox(width: 10),
-            // Chat icon with navigation
-            InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ChatScreen()),
-                );
-              },
-              child: Icon(Icons.message_outlined, color: Colors.black87),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              label: 'Saya',
             ),
           ],
         ),
       ),
-      body: _screens[_selectedIndex], // Show the current screen
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color(0xFF3C7846),
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.black,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.lightbulb_outline),
-            label: 'Panduan',
+    );
+  }
+
+  PreferredSizeWidget _buildHomeAppBar(BuildContext context) {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: const Color(0xFF3C7846),
+      title: Row(
+        children: [
+          const Text(
+            'Camp4U',
+            style: TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_none),
-            label: 'Notifikasi',
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 10),
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: TextField(
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  prefixIcon: Icon(Icons.search, color: Colors.grey),
+                  border: InputBorder.none,
+                  hintText: 'Cari gear...',
+                  hintStyle: TextStyle(color: Colors.grey.shade500),
+                ),
+              ),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Saya',
+          // Cart icon with navigation
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CartScreen()),
+              );
+            },
+            child: const Icon(Icons.shopping_cart, color: Colors.black87),
+          ),
+          const SizedBox(width: 10),
+          // Chat icon with navigation
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ChatScreen()),
+              );
+            },
+            child: const Icon(Icons.message_outlined, color: Colors.black87),
           ),
         ],
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
       ),
     );
   }
@@ -158,64 +165,63 @@ class _CampingHomeContentState extends State<CampingHomeContent> {
             'assets/images/promo.jpg',
             fit: BoxFit.cover,
             width: double.infinity,
-            errorBuilder:
-                (context, error, stackTrace) => Container(
-                  padding: const EdgeInsets.all(16),
-                  color: Colors.green.shade400,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'PROMO CAMPING',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Diskon 25% untuk peralatan baru. Nikmati liburan petualangan dengan set gear terbaik!',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
-                            SizedBox(height: 12),
-                            ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.amber,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                              ),
-                              child: Text(
-                                'Lihat Semua',
-                                style: TextStyle(
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
+            errorBuilder: (context, error, stackTrace) => Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.green.shade400,
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PROMO CAMPING',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
                         ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Icon(
-                          Icons.landscape,
-                          size: 80,
-                          color: Colors.white,
+                        SizedBox(height: 8),
+                        Text(
+                          'Diskon 25% untuk peralatan baru. Nikmati liburan petualangan dengan set gear terbaik!',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
                         ),
-                      ),
-                    ],
+                        SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          child: Text(
+                            'Lihat Semua',
+                            style: TextStyle(
+                              color: Colors.black87,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  Expanded(
+                    flex: 1,
+                    child: Icon(
+                      Icons.landscape,
+                      size: 80,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
 
           // Kategori Section
@@ -260,14 +266,13 @@ class _CampingHomeContentState extends State<CampingHomeContent> {
 
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children:
-                          viewModel.categories.map((category) {
-                            return _buildCategoryItem(
-                              imageUrl: category.imageUrl,
-                              label: category.name,
-                              color: Colors.amber.shade100,
-                            );
-                          }).toList(),
+                      children: viewModel.categories.map((category) {
+                        return _buildCategoryItem(
+                          imageUrl: category.imageUrl,
+                          label: category.name,
+                          color: Colors.amber.shade100,
+                        );
+                      }).toList(),
                     );
                   },
                 ),
@@ -370,11 +375,10 @@ class _CampingHomeContentState extends State<CampingHomeContent> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder:
-                (context) => CategoryProductsScreen(
-                  categoryId: category.id,
-                  categoryName: label,
-                ),
+            builder: (context) => CategoryProductsScreen(
+              categoryId: category.id,
+              categoryName: label,
+            ),
           ),
         );
       },

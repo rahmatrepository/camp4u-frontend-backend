@@ -5,7 +5,7 @@ import 'screens/home_screen.dart';
 import 'screens/product_screen.dart';
 import 'screens/product_detail_screen.dart';
 import 'screens/registration_screen.dart';
-import 'screens/login_screen.dart';
+import 'screens/login.dart'; // Updated path
 import 'screens/cart.dart';
 import 'screens/booking.dart';
 import 'screens/transfer.dart';
@@ -22,14 +22,24 @@ import 'screens/notif.dart';
 import 'ViewModel/category_view_model.dart';
 import 'ViewModel/product_view_model.dart';
 import 'ViewModel/auth_view_model.dart';
+import 'ViewModel/cart_view_model.dart';
 
 void main() {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthViewModel()),
+        ChangeNotifierProvider(
+          create: (context) {
+            final authViewModel =
+                Provider.of<AuthViewModel>(context, listen: false);
+            final cartViewModel = CartViewModel();
+            cartViewModel.setAuthToken(authViewModel.token ?? '');
+            return cartViewModel;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => CategoryViewModel()),
         ChangeNotifierProvider(create: (_) => ProductViewModel()),
-        ChangeNotifierProvider(create: (_) => AuthViewModel()),
       ],
       child: const MyApp(),
     ),

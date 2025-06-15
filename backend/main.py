@@ -1,7 +1,7 @@
 from binascii import Error
 import sqlite3
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -494,27 +494,301 @@ def register_user(user: UserCreate):
 
     except Error as e:
         raise HTTPException(status_code=500, detail=str(e))
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from datetime import timedelta
-# Asumsi ini ada di file Anda
-# from .auth_utils import authenticate_user, create_access_token
-# from .config import ACCESS_TOKEN_EXPIRE_MINUTES
 
-router = APIRouter() # Jika Anda menggunakan APIRouter
-
-# Jika Anda tidak menggunakan router, langsung gunakan @app.post
-@app.post("/auth/login") # Atau @app.post("/auth/login")
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+@app.post("/auth/login")
+async def login_for_access_token(username: str = Form(...), password: str = Form(...)):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute(
+            "SELECT * FROM users WHERE username = %s",
+            (username,)
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer", "username": user.username, "full_name": user.full_name, "email": user.email, "phone_number": user.phone_number, "id": user.id, "created_at": user.created_at, "updated_at": user.updated_at, "profile_picture": user.profile_picture, "address": user.address, "city": user.city, "province": user.province, "postal_code": user.postal_code, "date_of_birth": user.date_of_birth, "gender": user.gender} # Sertakan semua data pengguna yang diperlukan
+        user = cursor.fetchone()
+        
+        if not user or not verify_password(password, user["password_hash"]):
+            raise HTTPException(
+                status_code=401,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        access_token = create_access_token(data={"sub": user["username"]})
+        
+        # Convert datetime objects to strings
+        if user.get("date_of_birth"):
+            user["date_of_birth"] = user["date_of_birth"].isoformat()
+        if user.get("created_at"):
+            user["created_at"] = user["created_at"].isoformat()
+        if user.get("updated_at"):
+            user["updated_at"] = user["updated_at"].isoformat()
+            
+        cursor.close()
+        conn.close()
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            **user  # Include all user data in response
+        }
+    except Exception as e:
+        print(f"Login error: {str(e)}")  # Add this for debugging
+        raise HTTPException(status_code=500, detail=str(e))
+
+class ProfileUpdate(BaseModel):
+    full_name: str
+    username: str
+    phone_number: str
+
+@app.put("/auth/profile/update")
+async def update_user_profile(
+    profile: ProfileUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Check if new username is already taken by another user
+        if profile.username != current_user["username"]:
+            cursor.execute(
+                "SELECT id FROM users WHERE username = %s AND id != %s",
+                (profile.username, current_user["id"])
+            )
+            if cursor.fetchone():
+                raise HTTPException(
+                    status_code=400,
+                    detail="Username already taken"
+                )
+
+        # Update user profile
+        update_query = """
+            UPDATE users 
+            SET username = %s,
+                full_name = %s,
+                phone_number = %s,
+                updated_at = %s
+            WHERE id = %s
+        """
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute(
+            update_query,
+            (
+                profile.username,
+                profile.full_name,
+                profile.phone_number,
+                now,
+                current_user["id"]
+            )
+        )
+        conn.commit()
+
+        # Get updated user data
+        cursor.execute(
+            "SELECT * FROM users WHERE id = %s",
+            (current_user["id"],)
+        )
+        updated_user = cursor.fetchone()
+
+        # Convert datetime objects to strings
+        if updated_user.get("date_of_birth"):
+            updated_user["date_of_birth"] = updated_user["date_of_birth"].isoformat()
+        if updated_user.get("created_at"):
+            updated_user["created_at"] = updated_user["created_at"].isoformat()
+        if updated_user.get("updated_at"):
+            updated_user["updated_at"] = updated_user["updated_at"].isoformat()
+
+        cursor.close()
+        conn.close()
+
+        return updated_user
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Add CartItem model
+class CartItem(BaseModel):
+    user_id: int
+    product_id: int
+    quantity: int
+    start_date: date
+    end_date: date
+
+@app.post("/cart/add", status_code=201)
+async def add_to_cart(
+    user_id: int,
+    product_id: int,
+    quantity: int,
+    start_date: date,
+    end_date: date,
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Verify user permissions
+        if current_user['id'] != user_id:
+            raise HTTPException(status_code=403, detail="Can only add to your own cart")
+
+        # Get product details
+        cursor.execute("""
+            SELECT stock_quantity, price_per_day, name, image_url
+            FROM products 
+            WHERE id = %s
+        """, (product_id,))
+        product = cursor.fetchone()
+        
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        # Calculate rental duration and subtotal
+        rental_days = (end_date - start_date).days + 1
+        subtotal = float(product['price_per_day']) * quantity * rental_days
+
+        # Check stock availability
+        cursor.execute("""
+            SELECT COUNT(*) as booked_count
+            FROM cart
+            WHERE product_id = %s 
+            AND (
+                (start_date <= %s AND end_date >= %s)
+                OR (start_date <= %s AND end_date >= %s)
+                OR (start_date >= %s AND end_date <= %s)
+            )
+        """, (
+            product_id,
+            end_date, start_date,
+            start_date, end_date,
+            start_date, end_date
+        ))
+        booked_result = cursor.fetchone()
+        booked_count = booked_result['booked_count']
+
+        available_stock = product['stock_quantity'] - booked_count
+        if available_stock < quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Not enough stock available. Only {available_stock} units available for selected dates"
+            )
+
+        # Add to cart
+        cursor.execute("""
+            INSERT INTO cart (
+                user_id, product_id, quantity,
+                start_date, end_date, subtotal,
+                created_at, updated_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+        """, (
+            user_id,
+            product_id,
+            quantity,
+            start_date,
+            end_date,
+            subtotal
+        ))
+        conn.commit()
+        cart_id = cursor.lastrowid
+
+        response_data = {
+            "id": cart_id,
+            "user_id": user_id,
+            "product_id": product_id,
+            "name": product['name'],
+            "image_url": product['image_url'],
+            "price_per_day": float(product['price_per_day']),
+            "quantity": quantity,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "subtotal": subtotal
+        }
+
+        cursor.close()
+        conn.close()
+
+        return response_data
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error in add_to_cart: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/cart/user/{user_id}")
+async def get_user_cart(user_id: int, current_user: dict = Depends(get_current_user)):
+    try:
+        if current_user['id'] != user_id:
+            raise HTTPException(status_code=403, detail="Can only access your own cart")
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT 
+                c.*,
+                p.name,
+                p.price_per_day,
+                p.image_url
+            FROM cart c
+            JOIN products p ON c.product_id = p.id
+            WHERE c.user_id = %s
+            ORDER BY c.created_at DESC
+        """, (user_id,))
+        
+        cart_items = cursor.fetchall()
+
+        # Convert decimal and datetime values to JSON-serializable format
+        for item in cart_items:
+            item['price_per_day'] = float(item['price_per_day'])
+            item['subtotal'] = float(item['subtotal'])
+            item['start_date'] = item['start_date'].isoformat()
+            item['end_date'] = item['end_date'].isoformat()
+            item['created_at'] = item['created_at'].isoformat()
+            item['updated_at'] = item['updated_at'].isoformat()
+
+        cursor.close()
+        conn.close()
+
+        return cart_items
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error in get_user_cart: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/cart/{cart_id}")
+async def delete_cart_item(cart_id: int, current_user: dict = Depends(get_current_user)):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Verify ownership
+        cursor.execute(
+            "SELECT user_id FROM cart WHERE id = %s",
+            (cart_id,)
+        )
+        item = cursor.fetchone()
+        
+        if not item:
+            raise HTTPException(status_code=404, detail="Cart item not found")
+        if item['user_id'] != current_user['id']:
+            raise HTTPException(status_code=403, detail="Can only delete your own cart items")
+
+        # Delete the cart item
+        cursor.execute("DELETE FROM cart WHERE id = %s", (cart_id,))
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return {"message": "Cart item deleted successfully"}
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error in delete_cart_item: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -63,13 +63,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             email: _emailController.text,
             fullName: _fullNameController.text,
             phoneNumber: _phoneController.text,
-            profilePicture: _profilePictureController.text.isNotEmpty ? _profilePictureController.text : null,
-            address: _addressController.text.isNotEmpty ? _addressController.text : null,
-            city: _cityController.text.isNotEmpty ? _cityController.text : null,
-            province: _provinceController.text.isNotEmpty ? _provinceController.text : null,
-            postalCode: _postalCodeController.text.isNotEmpty ? _postalCodeController.text : null,
-            dateOfBirth: _selectedDateOfBirth,
-            gender: _selectedGender,
+            profilePicture: _profilePictureController.text.isNotEmpty
+                ? _profilePictureController.text
+                : null,
           );
 
       if (mounted) {
@@ -420,7 +416,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   GestureDetector(
                     onTap: () => _selectDateOfBirth(context),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 15),
                       decoration: BoxDecoration(
                         color: Colors.yellow[50],
                         borderRadius: BorderRadius.circular(5),
@@ -433,7 +430,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                   ? 'Pilih tanggal lahir'
                                   : '${_selectedDateOfBirth!.day}/${_selectedDateOfBirth!.month}/${_selectedDateOfBirth!.year}',
                               style: TextStyle(
-                                color: _selectedDateOfBirth == null ? Colors.grey[600] : Colors.black,
+                                color: _selectedDateOfBirth == null
+                                    ? Colors.grey[600]
+                                    : Colors.black,
                               ),
                             ),
                           ),

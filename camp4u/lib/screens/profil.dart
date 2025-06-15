@@ -33,7 +33,12 @@ class ProfilScreen extends StatelessWidget {
                     const SizedBox(height: 24),
                     ElevatedButton(
                       onPressed: () {
-                        Navigator.pushNamed(context, '/login');
+                        // Navigate to login and clear history so user can't go back
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/login',
+                          (route) => false,
+                        );
                       },
                       child: const Text('Login'),
                     ),
@@ -62,20 +67,17 @@ class ProfilScreen extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      const Text(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Text(
                         'Profil',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
+                          fontStyle: FontStyle.italic,
+                          color: Colors.black,
                         ),
                       ),
-                      const SizedBox(width: 40), // For balance
                     ],
                   ),
                 ),
@@ -119,9 +121,9 @@ class ProfilScreen extends StatelessWidget {
                 const SizedBox(height: 32),
 
                 // Menu options
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
                     children: [
                       _buildMenuButton(
                         context: context,
@@ -162,7 +164,7 @@ class ProfilScreen extends StatelessWidget {
                         iconColor: Colors.red,
                         backgroundColor: buttonGreen,
                         onTap: () {
-                          authViewModel.logout();
+                          authViewModel.logout(context);
                           Navigator.pushNamedAndRemoveUntil(
                             context,
                             '/login',
